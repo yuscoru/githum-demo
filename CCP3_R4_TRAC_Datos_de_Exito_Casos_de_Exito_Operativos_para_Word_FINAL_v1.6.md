@@ -36,19 +36,84 @@ Los casos de éxito aquí documentados demuestran la capacidad real del sistema 
 
 ---
 
-## 2. Alcance y Objetivos
+# 2. Alcance y Objetivos
 
-### 2.1 Alcance
+## 2.1 Alcance (visión operativa para cliente)
+Este documento describe y evidencia, con un enfoque operativo (equivalente a un flujo AML), cómo TRAC permite monitorizar direcciones en la blockchain de **Bitcoin (BTC)** y detectar exposición a **contrapartes de riesgo**. El alcance cubre la operativa completa, desde la configuración inicial hasta la obtención de evidencias verificables por terceros.
 
-Este documento cubre los casos de éxito operativos ejecutados sobre la blockchain de **Bitcoin (BTC)** mediante el modo de ejecución **histórico** y el modo de **monitorización en tiempo real** del sistema TRAC.
+En concreto, incluye:
 
-### 2.2 Objetivos
+**a) Alta del sujeto monitorizado (address / cliente)**  
+Se registra en TRAC el sujeto que se desea controlar (por ejemplo, una address BTC o un cliente con direcciones asociadas). Este paso fija el perímetro de seguimiento y asegura la trazabilidad posterior (qué se monitoriza, desde cuándo y con qué configuración).
 
-- Demostrar el funcionamiento end-to-end del sistema TRAC en un entorno real con datos reales de la blockchain de Bitcoin.
-- Validar la capacidad del motor de IA para identificar direcciones sospechosas con alta precisión (predicción ≥ 0.6).
-- Verificar la generación correcta de alertas operativas ante la detección de interacciones entre direcciones monitorizadas y direcciones catalogadas como sospechosas.
-- Documentar evidencias reproducibles y trazables de cada caso de éxito.
+**b) Configuración del control (Monitor) como escenario AML**  
+Se configura un **Monitor** que actúa como un escenario AML aplicado a blockchain: define la red (BTC), la regla de detección y el umbral de priorización (**AI Threshold**), así como el sujeto monitorizado.  
+En este documento, la regla **OFF‑RAMP** se entiende como la detección de **interacción o salida** del sujeto monitorizado hacia **addresses/contrapartes de riesgo**, donde el riesgo puede provenir de:
+- **Catalogación externa** (p. ej., OFAC/DFIR/OSINT u otras fuentes), y/o
+- **Predicción alta del módulo de IA** de TRAC (según el AI Threshold configurado).
 
+**c) Ejecución del control (online y/o histórico)**  
+TRAC se ejecuta en dos modos complementarios:
+- **Online / tiempo real**: ingesta continua de bloques/transacciones y fuentes off‑chain, enriquecimiento y evaluación inmediata por IA y motor de reglas, con generación de alertas en tiempo real.
+- **Histórico**: ejecución parametrizada por rango de bloques (`bloque_inicio` → `bloque_fin`) para reprocesar datos pasados y reproducir escenarios. Este modo se ejecuta de forma orquestada y aislada (pipeline dedicado) para no interferir con el modo online, y produce salidas/logs segregados para facilitar trazabilidad.
+
+**d) Generación de alertas operativas (detección)**  
+Cuando se detecta exposición conforme al Monitor, TRAC genera una **alerta** con los campos necesarios para investigación: identificador, severidad, fuente (DFIR/IA), direcciones implicadas, bloque/fecha, importes y referencias transaccionales.
+
+**e) Gestión del caso: alerta → incidente (case management)**  
+Las alertas pueden elevarse a **incidente/caso** para documentar y custodiar el expediente: estado, criticidad, cliente asociado (si aplica) y descripción del hallazgo, facilitando auditoría y seguimiento.
+
+**f) Evidencia y reproducibilidad**  
+Cada caso se acompaña de evidencias reproducibles:
+- Evidencia interna (IDs, timestamps y campos operativos en TRAC).
+- Evidencia externa verificable on-chain mediante un explorador público (p. ej., mempool.space) usando txid/bloque/direcciones/importe.
+
+Como resultado, el documento no solo muestra “resultados”, sino el proceso completo y auditable: **alta → monitor → ejecución → alerta → incidente → evidencia**.
+
+---
+
+## 2.2 Objetivos (qué se valida y cómo se evidencia)
+Los objetivos del documento son:
+
+1) **Demostrar el funcionamiento end-to-end en condiciones equivalentes a un entorno real**  
+   Validar el flujo estándar de operación desde el inicio de la monitorización hasta la obtención de evidencias y, si aplica, el registro del caso, verificando que los componentes funcionan de forma integrada y trazable.
+
+2) **Verificar la detección de exposición a contrapartes de riesgo (OFF‑RAMP)**  
+   Confirmar que TRAC detecta interacciones/salidas hacia contrapartes de riesgo, tanto por catalogación externa (OFAC/DFIR/OSINT u otras) como por priorización basada en IA.
+
+3) **Validar la priorización por IA con umbral configurable (AI Threshold)**  
+   Validar que la IA aporta una señal cuantitativa para priorizar revisión y reducir ruido, manteniendo el umbral como parámetro configurable según criterio del cliente.
+
+4) **Documentar evidencias reproducibles y trazables de cada caso de éxito**  
+   Aportar evidencias que permitan reproducir (modo histórico) y verificar (explorador on-chain) cada caso, con trazabilidad completa desde el Monitor hasta la alerta/incidente.
+
+5) **Alinear los casos de éxito con la metodología de validación y trazabilidad**  
+   Asegurar que las evidencias presentadas permiten valorar la corrección de la solución respecto a requisitos/objetivos del proyecto, e incluyen trazabilidad operativa (logs/monitorización) suficiente para auditoría.
+
+---
+
+## 2.3 Modos de ejecución (online vs. histórico)
+TRAC opera en dos modos complementarios, que se utilizan en los casos de éxito de este documento:
+
+### 2.3.1 Online / tiempo real
+En este modo, TRAC realiza:
+- **Ingesta continua** desde la blockchain (bloques/transacciones) y fuentes off‑chain.
+- **Procesado inmediato**, enriquecimiento y evaluación por el módulo de IA y el motor de eventos y reglas.
+- **Generación de alertas en tiempo real** cuando se cumplen las condiciones definidas en el Monitor.
+
+Operativamente, este modo habilita vigilancia continua y detección temprana, con alertas disponibles para revisión en cuanto se produce el evento.
+
+### 2.3.2 Histórico (reprocesado por rango de bloques)
+En este modo, TRAC ejecuta un análisis parametrizado por:
+- `bloque_inicio` → `bloque_fin`,
+para reprocesar periodos pasados y **reproducir** escenarios.
+
+Operativamente, este modo permite:
+- reproducir un caso para validación/auditoría,
+- comparar resultados con criterios de aceptación,
+- y ejecutar periodos históricos sin esperar a eventos en tiempo real.
+
+A nivel de plataforma, la ejecución histórica se lanza de forma orquestada y **aislada** (pipeline dedicado) para no interferir con la operación online. La salida se segrega (alertas/resultados y logs dedicados) para facilitar trazabilidad y análisis.
 ---
 
 ## 3. Proceso Global del Sistema TRAC
